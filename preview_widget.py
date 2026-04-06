@@ -4,26 +4,54 @@ from PySide6.QtCore import Qt
 
 
 class ImagePreview(QLabel):
-    def __init__(self):
+    def __init__(self, parent=None):
         super().__init__()
-        self.setText("Preview")
+
+        self.parent_app = parent
         self.setAlignment(Qt.AlignCenter)
-        self.setFixedHeight(300)
+
+        self.dragging = False
+        self.last_pos = None
 
     def update_preview(self, pil_image):
+
         if pil_image is None:
             return
 
-        # Keep aspect ratio
-        pil_image.thumbnail((300, 300))
+        img = pil_image.copy()
+        img.thumbnail((800, 600))
 
-        data = pil_image.tobytes("raw", "RGBA")
+        data = img.tobytes("raw", "RGBA")
+
         qimage = QImage(
             data,
-            pil_image.width,
-            pil_image.height,
+            img.width,
+            img.height,
             QImage.Format_RGBA8888
         )
 
-        pixmap = QPixmap.fromImage(qimage)
-        self.setPixmap(pixmap)
+        self.setPixmap(QPixmap.fromImage(qimage))
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.dragging = True
+            self.last_pos = event.pos()
+
+    def mouseMoveEvent(self, event):
+
+        if not self.dragging:
+            return
+
+        delta = event.pos() - self.last_pos
+        self.last_pos = event.pos()
+
+        self.parent_app.offset_x_slider.setValue(
+            self.parent_app.offset_x_slider.value() + delta.x()
+        )
+
+        self.parent_app.offset_y_slider.setValue(
+            self.parent_app.offset_y_slider.value() + delta.y()
+        )
+
+    def mouseReleaseEvent(self, event):
+        self.dragging = False
